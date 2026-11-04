@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>k8s-batch-analyzer report</title>
+<style>
+:root{--bg:#0b0f14;--panel:#121b23;--card:#16232d;--line:#23343f;--text:#eaf1f8;--muted:#8ba3b5;--accent:#00adb5;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--run:#58a6ff}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1000px 500px at 50% -10%,#123039 0%,var(--bg) 55%);color:var(--text);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1120px;margin:0 auto;padding:40px 20px 64px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:24px}
+.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:22px}
+@media(max-width:860px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.card .v{font-size:26px;font-weight:700;margin-top:2px}
+.card .v.ok{color:var(--ok)}.card .v.warn{color:var(--warn)}.card .v.bad{color:var(--bad)}.card .v.run{color:var(--run)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+.panel h2{font-size:16px;margin:0 0 10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+td.num{font-family:ui-monospace,Consolas,monospace}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#0b141a;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:12px}
+.badge{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--line)}
+.badge.ok{color:var(--ok);border-color:var(--ok)}.badge.bad{color:var(--bad);border-color:var(--bad)}
+.badge.run{color:var(--run);border-color:var(--run)}.badge.warn{color:var(--warn);border-color:var(--warn)}.badge.muted{color:var(--muted)}
+.muted{color:var(--muted)}
+.reason{color:var(--muted);font-size:12px;margin-top:3px}
+footer{color:var(--muted);font-size:12px;margin-top:30px}
+.empty{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+<h1>Batch jobs</h1>
+<div class="sub">Source: examples\capture.json · generated 2026-11-05 00:14 IST</div>
+
+<div class="cards">
+  <div class="card"><div class="k">Jobs</div><div class="v">6</div></div>
+  <div class="card"><div class="k">Succeeded</div><div class="v ok">2</div></div>
+  <div class="card"><div class="k">Failed</div><div class="v bad">1</div></div>
+  <div class="card"><div class="k">Running</div><div class="v run">1</div></div>
+  <div class="card"><div class="k">Pending / suspended</div><div class="v warn">1 / 1</div></div>
+</div>
+
+<div class="panel">
+<h2>Jobs</h2>
+<table>
+<thead><tr><th>Job</th><th>Status</th><th>OK</th><th>Fail</th><th>Active</th><th>CPU</th><th>Memory</th><th>GPU</th><th>Duration</th></tr></thead>
+<tbody><tr>
+<td><code>data/import-catalog</code></td>
+<td><span class="badge warn">Pending</span></td>
+<td class="num">0</td><td class="num">0</td><td class="num">0</td>
+<td class="num">1</td><td class="num">2.0Gi</td><td class="num">0</td><td class="num">-</td>
+</tr><tr>
+<td><code>default/nightly-backup</code></td>
+<td><span class="badge ok">Succeeded</span></td>
+<td class="num">1</td><td class="num">0</td><td class="num">0</td>
+<td class="num">0.25</td><td class="num">256Mi</td><td class="num">0</td><td class="num">4m30s</td>
+</tr><tr>
+<td><code>ml-jobs/eval-bert</code><div class="reason">Job has reached the specified backoff limit</div></td>
+<td><span class="badge bad">Failed</span></td>
+<td class="num">0</td><td class="num">4</td><td class="num">0</td>
+<td class="num">2</td><td class="num">8.0Gi</td><td class="num">1</td><td class="num">5m0s</td>
+</tr><tr>
+<td><code>ml-jobs/gpu-batch</code></td>
+<td><span class="badge muted">Suspended</span></td>
+<td class="num">0</td><td class="num">0</td><td class="num">0</td>
+<td class="num">8</td><td class="num">32.0Gi</td><td class="num">2</td><td class="num">-</td>
+</tr><tr>
+<td><code>ml-jobs/preprocess</code></td>
+<td><span class="badge run">Running</span></td>
+<td class="num">0</td><td class="num">0</td><td class="num">1</td>
+<td class="num">0.5</td><td class="num">1.0Gi</td><td class="num">0</td><td class="num">6h44m</td>
+</tr><tr>
+<td><code>ml-jobs/train-resnet</code></td>
+<td><span class="badge ok">Succeeded</span></td>
+<td class="num">1</td><td class="num">0</td><td class="num">0</td>
+<td class="num">4</td><td class="num">16.0Gi</td><td class="num">1</td><td class="num">1h12m</td>
+</tr></tbody>
+</table>
+</div>
+
+<div class="panel">
+<h2>Namespaces</h2>
+<table><thead><tr><th>Namespace</th><th>Jobs</th><th>Succeeded</th><th>Failed</th><th>Running</th></tr></thead>
+<tbody><tr><td>data</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr><tr><td>default</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td></tr><tr><td>ml-jobs</td><td class="num">4</td><td class="num">1</td><td class="num">1</td><td class="num">1</td></tr></tbody></table>
+</div>
+
+<div class="panel">
+<h2>CronJobs</h2>
+<table><thead><tr><th>CronJob</th><th>Schedule</th><th>State</th><th>Last schedule</th><th>Active jobs</th></tr></thead>
+<tbody><tr><td><code>default/backup</code></td><td><code>*/30 * * * *</code></td><td><span class="badge muted">suspended</span></td><td>2026-11-03 18:30</td><td class="num">0</td></tr><tr><td><code>ml-jobs/nightly-eval</code></td><td><code>0 2 * * *</code></td><td><span class="badge ok">active</span></td><td>2026-11-05 02:00</td><td class="num">1</td></tr></tbody></table>
+</div>
+
+<footer>Generated by k8s-batch-analyzer v1.0.0. Resource numbers come from the Job pod template, not from pod usage. Durations end at the completion time, or at report time for unfinished jobs.</footer>
+</main>
+</body>
+</html>

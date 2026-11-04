@@ -1,79 +1,139 @@
 # k8s-batch-analyzer
 
-Kubernetes batch job analyzer for monitoring job queues, tracking completion rates, and analyzing resource patterns. Works with Volcano, Job, and CronJob resources.
+Summarise Kubernetes Jobs and CronJobs: what succeeded, what failed, how long it
+took, and what resources each Job's pod template asks for. Reads a saved
+capture, raw `kubectl` output, or the current cluster.
 
-## Features
+```console
+$ k8s-batch-analyzer --from examples/capture.json
+Batch jobs — examples/capture.json
+Generated 2026-11-05 00:12 IST
 
-- Monitor batch job queues in real-time
-- Track job completion rates and failure patterns
-- Analyze resource requests vs actual usage
-- Export job history for analysis
-- Support for Volcano Queue, Job, and PodGroup
-- Alert on job failures
+6 jobs · 2 succeeded · 1 failed · 1 running · 1 pending · 1 suspended
 
-## Installation
+JOB                            STATUS       OK FAIL ACTIVE   CPU   MEM DURATION
+--------------------------------------------------------------------------------
+data/import-catalog            Pending       0    0      0     1 2.0Gi -
+default/nightly-backup         Succeeded     1    0      0  0.25 256Mi 4m30s
+ml-jobs/eval-bert              Failed        0    4      0     2 8.0Gi 5m0s
+ml-jobs/gpu-batch              Suspended     0    0      0     8 32.0Gi -
+ml-jobs/preprocess             Running       0    0      1   0.5 1.0Gi 6h12m
+ml-jobs/train-resnet           Succeeded     1    0      0     4 16.0Gi 1h12m
+```
+
+## What it reads
+
+Only standard `batch/v1` resources:
+
+- **Job** — `status.succeeded`, `status.failed`, `status.active`, the
+  `Complete`/`Failed` conditions, `spec.backoffLimit`, `spec.suspend`, start and
+  completion times.
+- **CronJob** — `spec.schedule`, `spec.suspend`, `status.lastScheduleTime`, and
+  the number of active child jobs.
+
+Status is derived in this order: a `Complete=True` condition is `Succeeded`, a
+`Failed=True` condition is `Failed`, `spec.suspend` is `Suspended`, active pods
+are `Running`, then succeeded/failed counts, otherwise `Pending`.
+
+Resource numbers come from the Job's **pod template requests** (falling back to
+limits), summed over all containers. They are what the Job intends to use, not
+what its pods actually consumed. Actual usage needs metrics-server, Prometheus,
+or another metrics source; this tool does not invent it.
+
+Durations end at `status.completionTime` when present, otherwise at report
+time. That means a running Job shows its age so far.
+
+## Install
 
 ```bash
 go install github.com/Ankitavasudev/k8s-batch-analyzer@latest
 ```
 
+Requires Go 1.21 or newer.
+
 ## Usage
 
 ```bash
-# Watch all jobs
-k8s-batch-analyzer watch
+# A saved capture with jobs and cronjobs arrays
+k8s-batch-analyzer --from examples/capture.json
 
-# Watch specific queue (Volcano)
-k8s-batch-analyzer watch --queue training-queue
+# Raw kubectl output
+kubectl get jobs -A -o json > jobs.json
+kubectl get cronjobs -A -o json > cronjobs.json
+k8s-batch-analyzer --jobs jobs.json --cronjobs cronjobs.json
 
-# Get job statistics
-k8s-batch-analyzer stats --namespace ml-jobs
+# The current kubectl context
+k8s-batch-analyzer
 
-# Export job history
-k8s-batch-analyzer export --format json --output job-history.json
+# One namespace
+k8s-batch-analyzer --namespace ml-jobs
 
-# Alert on failures
-k8s-batch-analyzer watch --alert-on-failure
+# Other formats
+k8s-batch-analyzer --from examples/capture.json -o json
+k8s-batch-analyzer --from examples/capture.json -o csv
+k8s-batch-analyzer --from examples/capture.json -o html > batch-report.html
 ```
 
-## Example Output
+## Capture format
 
+One JSON file with `jobs` and `cronjobs` arrays in the Kubernetes API shape.
+Extra fields are ignored, so `kubectl get ... -o json` output can be pasted in
+directly:
+
+```json
+{
+  "jobs": [
+    {
+      "metadata": { "name": "train-resnet", "namespace": "ml-jobs" },
+      "spec": {
+        "backoffLimit": 3,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "trainer",
+                "resources": { "requests": { "cpu": "4", "memory": "16Gi", "nvidia.com/gpu": "1" } }
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "succeeded": 1,
+        "startTime": "2026-11-01T08:00:00Z",
+        "completionTime": "2026-11-01T09:12:00Z",
+        "conditions": [{ "type": "Complete", "status": "True" }]
+      }
+    }
+  ],
+  "cronjobs": []
+}
 ```
-QUEUE: training-queue
-=================================================
-JOB NAME          STATUS    COMPLETION   RESOURCES
--------------------------------------------------
-train-bert-v1     Running   45/100       4 CPU, 16Gi
-train-resnet-v2   Running   89/100       8 CPU, 32Gi
-train-gpt-v3      Pending   0/100        16 CPU, 64Gi
-inference-batch   Complete  100/100      2 CPU, 8Gi
-=================================================
-Total: 4 jobs | Running: 2 | Pending: 1 | Complete: 1
-Resource Usage: 30 CPU, 120Gi
-```
 
-## Volcano Integration
+## Output
 
-Works with Volcano scheduler for batch workload analysis:
+| Format | Use |
+| --- | --- |
+| `text` (default) | Summary, job table, namespace breakdown, CronJobs, failure reasons |
+| `json` | Full report with per-job fields |
+| `csv` | One row per Job, for spreadsheets |
+| `html` | Single file with inline CSS, no external assets |
 
-```bash
-# Monitor Volcano queues
-k8s-batch-analyzer volcano queues
+Jobs sort by `namespace/name`; namespaces sort by name. The same capture always
+produces the same ordering.
 
-# Get queue resource allocation
-k8s-batch-analyzer volcano resources --queue training-queue
+## Demo
 
-# Analyze job scheduling patterns
-k8s-batch-analyzer volcano scheduling --queue training-queue
-```
+A generated report for the example capture is published at
+<https://ankitavasudev.github.io/k8s-batch-analyzer/>.
 
-## Building
+## Limitations
 
-```bash
-git clone https://github.com/Ankitavasudev/k8s-batch-analyzer.git
-cd k8s-batch-analyzer
-go build -o k8s-batch-analyzer .
-```
+- Standard `batch/v1` only. It does not read Volcano, Kueue, or other CRDs.
+- No pod-level history or logs; the Job status is the source of truth.
+- CPU and memory are parsed from Kubernetes quantities; unusual custom units
+  are treated as zero.
+- Live mode shells out to `kubectl` and uses the selected context.
 
 ## License
 

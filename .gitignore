@@ -1,0 +1,4 @@
+k8s-batch-analyzer
+k8s-batch-analyzer.exe
+*.test
+*.out

@@ -1,0 +1,165 @@
+{
+  "jobs": [
+    {
+      "metadata": { "name": "train-resnet", "namespace": "ml-jobs" },
+      "spec": {
+        "backoffLimit": 3,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "trainer",
+                "resources": {
+                  "requests": { "cpu": "4", "memory": "16Gi", "nvidia.com/gpu": "1" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "succeeded": 1,
+        "startTime": "2026-11-01T08:00:00Z",
+        "completionTime": "2026-11-01T09:12:00Z",
+        "conditions": [
+          { "type": "Complete", "status": "True", "reason": "CompletionsReached" }
+        ]
+      }
+    },
+    {
+      "metadata": { "name": "eval-bert", "namespace": "ml-jobs" },
+      "spec": {
+        "backoffLimit": 3,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "eval",
+                "resources": {
+                  "requests": { "cpu": "2", "memory": "8Gi", "nvidia.com/gpu": "1" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "failed": 4,
+        "startTime": "2026-11-01T10:00:00Z",
+        "completionTime": "2026-11-01T10:05:00Z",
+        "conditions": [
+          {
+            "type": "Failed",
+            "status": "True",
+            "reason": "BackoffLimitExceeded",
+            "message": "Job has reached the specified backoff limit"
+          }
+        ]
+      }
+    },
+    {
+      "metadata": { "name": "preprocess", "namespace": "ml-jobs" },
+      "spec": {
+        "backoffLimit": 6,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "preprocess",
+                "resources": {
+                  "requests": { "cpu": "500m", "memory": "1Gi" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "active": 1,
+		"startTime": "2026-11-04T12:00:00Z"
+      }
+    },
+    {
+      "metadata": { "name": "gpu-batch", "namespace": "ml-jobs" },
+      "spec": {
+        "suspend": true,
+        "backoffLimit": 2,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "worker",
+                "resources": {
+                  "requests": { "cpu": "8", "memory": "32Gi", "nvidia.com/gpu": "2" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "status": {}
+    },
+    {
+      "metadata": { "name": "nightly-backup", "namespace": "default" },
+      "spec": {
+        "backoffLimit": 1,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "backup",
+                "resources": {
+                  "requests": { "cpu": "250m", "memory": "256Mi" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "succeeded": 1,
+        "startTime": "2026-11-04T02:00:00Z",
+        "completionTime": "2026-11-04T02:04:30Z",
+        "conditions": [
+          { "type": "Complete", "status": "True", "reason": "CompletionsReached" }
+        ]
+      }
+    },
+    {
+      "metadata": { "name": "import-catalog", "namespace": "data" },
+      "spec": {
+        "backoffLimit": 6,
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "import",
+                "resources": {
+                  "requests": { "cpu": "1", "memory": "2Gi" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "status": {}
+    }
+  ],
+  "cronjobs": [
+    {
+      "metadata": { "name": "nightly-eval", "namespace": "ml-jobs" },
+      "spec": { "schedule": "0 2 * * *" },
+      "status": {
+        "lastScheduleTime": "2026-11-05T02:00:00Z",
+        "active": [{ "name": "nightly-eval-29123456" }]
+      }
+    },
+    {
+      "metadata": { "name": "backup", "namespace": "default" },
+      "spec": { "schedule": "*/30 * * * *", "suspend": true },
+      "status": {
+        "lastScheduleTime": "2026-11-03T18:30:00Z"
+      }
+    }
+  ]
+}
