@@ -3,100 +3,194 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>k8s-batch-analyzer report</title>
+<title>k8s-batch-analyzer — batch jobs at a glance</title>
+<meta name="description" content="A dashboard for Kubernetes batch jobs and cronjobs: which succeeded, which failed, which are pending, and how much GPU each is eating.">
 <style>
-:root{--bg:#0b0f14;--panel:#121b23;--card:#16232d;--line:#23343f;--text:#eaf1f8;--muted:#8ba3b5;--accent:#00adb5;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--run:#58a6ff}
+:root{
+  --bg:#0c1118; --panel:#131b26; --panel-2:#1a2434; --line:#26334a;
+  --fg:#e9edf4; --muted:#8399b5; --accent:#34d399; --accent-dim:rgba(52,211,153,.12);
+  --fail:#f87171; --ok:#34d399; --run:#60a5fa; --pending:#fbbf24; --suspend:#a78bfa;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
 *{box-sizing:border-box}
-body{margin:0;background:radial-gradient(1000px 500px at 50% -10%,#123039 0%,var(--bg) 55%);color:var(--text);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{max-width:1120px;margin:0 auto;padding:40px 20px 64px}
-h1{font-size:26px;margin:0 0 4px}
-.sub{color:var(--muted);font-size:13px;margin-bottom:24px}
-.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:22px}
-@media(max-width:860px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
-.card .k{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-.card .v{font-size:26px;font-weight:700;margin-top:2px}
-.card .v.ok{color:var(--ok)}.card .v.warn{color:var(--warn)}.card .v.bad{color:var(--bad)}.card .v.run{color:var(--run)}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
-.panel h2{font-size:16px;margin:0 0 10px}
+body{margin:0;background:radial-gradient(800px 500px at 10% -10%,rgba(52,211,153,.12),transparent 60%),radial-gradient(700px 450px at 93% 5%,rgba(96,165,250,.1),transparent 55%),var(--bg);color:var(--fg);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1160px;margin:0 auto;padding:26px 20px 56px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:22px;margin:0}
+h1 code{color:var(--accent);font-size:.82em}
+.sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--muted);font-size:12.5px;text-decoration:none}
+.btn:hover{color:var(--fg);border-color:#3a4a63}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.stat .n{font-size:22px;font-weight:700}
+.stat .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.stat.ok .n{color:var(--ok)}.stat.run .n{color:var(--run)}.stat.fail .n{color:var(--fail)}.stat.pending .n{color:var(--pending)}.stat.suspend .n{color:var(--suspend)}
+.grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 18px 44px rgba(0,0,0,.35);margin-bottom:14px}
+h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.chip{cursor:pointer;padding:4px 11px;border-radius:999px;font-size:12px;border:1px solid var(--line);background:transparent;color:var(--muted)}
+.chip.active{color:var(--accent);border-color:var(--accent);background:var(--accent-dim)}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
-td.num{font-family:ui-monospace,Consolas,monospace}
-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;background:#0b141a;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:12px}
-.badge{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--line)}
-.badge.ok{color:var(--ok);border-color:var(--ok)}.badge.bad{color:var(--bad);border-color:var(--bad)}
-.badge.run{color:var(--run);border-color:var(--run)}.badge.warn{color:var(--warn);border-color:var(--warn)}.badge.muted{color:var(--muted)}
+th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line)}
+thead th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+tbody tr:hover{background:rgba(52,211,153,.05)}
+tbody tr:last-child td{border-bottom:0}
+code{font-family:var(--mono);font-size:12px}
+.badge{display:inline-block;padding:1px 9px;border-radius:999px;font-size:11.5px;font-weight:600;border:1px solid currentColor;text-transform:capitalize}
+.badge.succeeded{color:var(--ok)}.badge.failed{color:var(--fail)}.badge.running{color:var(--run)}.badge.pending{color:var(--pending)}.badge.suspended{color:var(--suspend)}
 .muted{color:var(--muted)}
-.reason{color:var(--muted);font-size:12px;margin-top:3px}
-footer{color:var(--muted);font-size:12px;margin-top:30px}
-.empty{color:var(--muted);font-size:13px}
+.bar{display:grid;grid-template-columns:120px 1fr 42px;gap:8px;align-items:center;font-size:12.5px;margin:6px 0}
+.track{height:9px;border-radius:5px;background:#0d141d;overflow:hidden}
+.fill{height:100%;border-radius:5px;transition:width .8s ease}
+.nsl{color:var(--muted);font-family:var(--mono);text-align:right}
+.cron{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:8px;background:var(--panel-2)}
+.cron code{color:var(--accent)}
+.failed-note{font-size:12px;color:#fca5a5;margin:4px 0 0;padding:10px 12px;border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.07);border-radius:9px}
+.foot{color:var(--muted);font-size:11px;margin-top:4px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.foot a{color:var(--accent)}
+.time{color:var(--muted);font-size:11px;font-family:var(--mono)}
 </style>
 </head>
 <body>
 <main>
-<h1>Batch jobs</h1>
-<div class="sub">Source: examples\capture.json · generated 2026-11-05 00:14 IST</div>
+  <div class="top">
+    <div>
+      <h1><code>k8s-batch-analyzer</code></h1>
+      <div class="sub">Succeeded, failed, running, pending, suspended — and the GPUs they're holding.</div>
+    </div>
+    <a class="btn" href="https://github.com/Ankitavasudev/k8s-batch-analyzer" target="_blank" rel="noopener">GitHub →</a>
+  </div>
 
-<div class="cards">
-  <div class="card"><div class="k">Jobs</div><div class="v">6</div></div>
-  <div class="card"><div class="k">Succeeded</div><div class="v ok">2</div></div>
-  <div class="card"><div class="k">Failed</div><div class="v bad">1</div></div>
-  <div class="card"><div class="k">Running</div><div class="v run">1</div></div>
-  <div class="card"><div class="k">Pending / suspended</div><div class="v warn">1 / 1</div></div>
-</div>
+  <div class="stats">
+    <div class="stat"><div class="n">6</div><div class="l">Jobs</div></div>
+    <div class="stat ok"><div class="n">2</div><div class="l">Succeeded</div></div>
+    <div class="stat fail"><div class="n">1</div><div class="l">Failed</div></div>
+    <div class="stat run"><div class="n">1</div><div class="l">Running</div></div>
+    <div class="stat pending"><div class="n">1</div><div class="l">Pending</div></div>
+    <div class="stat suspend"><div class="n">1</div><div class="l">Suspended</div></div>
+  </div>
 
-<div class="panel">
-<h2>Jobs</h2>
-<table>
-<thead><tr><th>Job</th><th>Status</th><th>OK</th><th>Fail</th><th>Active</th><th>CPU</th><th>Memory</th><th>GPU</th><th>Duration</th></tr></thead>
-<tbody><tr>
-<td><code>data/import-catalog</code></td>
-<td><span class="badge warn">Pending</span></td>
-<td class="num">0</td><td class="num">0</td><td class="num">0</td>
-<td class="num">1</td><td class="num">2.0Gi</td><td class="num">0</td><td class="num">-</td>
-</tr><tr>
-<td><code>default/nightly-backup</code></td>
-<td><span class="badge ok">Succeeded</span></td>
-<td class="num">1</td><td class="num">0</td><td class="num">0</td>
-<td class="num">0.25</td><td class="num">256Mi</td><td class="num">0</td><td class="num">4m30s</td>
-</tr><tr>
-<td><code>ml-jobs/eval-bert</code><div class="reason">Job has reached the specified backoff limit</div></td>
-<td><span class="badge bad">Failed</span></td>
-<td class="num">0</td><td class="num">4</td><td class="num">0</td>
-<td class="num">2</td><td class="num">8.0Gi</td><td class="num">1</td><td class="num">5m0s</td>
-</tr><tr>
-<td><code>ml-jobs/gpu-batch</code></td>
-<td><span class="badge muted">Suspended</span></td>
-<td class="num">0</td><td class="num">0</td><td class="num">0</td>
-<td class="num">8</td><td class="num">32.0Gi</td><td class="num">2</td><td class="num">-</td>
-</tr><tr>
-<td><code>ml-jobs/preprocess</code></td>
-<td><span class="badge run">Running</span></td>
-<td class="num">0</td><td class="num">0</td><td class="num">1</td>
-<td class="num">0.5</td><td class="num">1.0Gi</td><td class="num">0</td><td class="num">6h44m</td>
-</tr><tr>
-<td><code>ml-jobs/train-resnet</code></td>
-<td><span class="badge ok">Succeeded</span></td>
-<td class="num">1</td><td class="num">0</td><td class="num">0</td>
-<td class="num">4</td><td class="num">16.0Gi</td><td class="num">1</td><td class="num">1h12m</td>
-</tr></tbody>
-</table>
-</div>
+  <div class="grid">
+    <section class="panel" aria-label="Jobs">
+      <h2>Batch jobs</h2>
+      <div class="chips" id="filterBar">
+        <button class="chip active" data-filter="all">All</button>
+        <button class="chip" data-filter="succeeded">Succeeded</button>
+        <button class="chip" data-filter="failed">Failed</button>
+        <button class="chip" data-filter="running">Running</button>
+        <button class="chip" data-filter="pending">Pending</button>
+        <button class="chip" data-filter="suspended">Suspended</button>
+      </div>
+      <table id="jobsTable">
+        <thead><tr><th>Job</th><th>Status</th><th>GPU</th><th>CPU / Mem</th><th>Duration</th></tr></thead>
+        <tbody id="jobRows"></tbody>
+      </table>
+      <p class="failed-note"><strong>eval-bert</strong> hit backoffLimit (3) after 4 failed pods — likely the training data schema drift.</p>
+    </section>
 
-<div class="panel">
-<h2>Namespaces</h2>
-<table><thead><tr><th>Namespace</th><th>Jobs</th><th>Succeeded</th><th>Failed</th><th>Running</th></tr></thead>
-<tbody><tr><td>data</td><td class="num">1</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr><tr><td>default</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num">0</td></tr><tr><td>ml-jobs</td><td class="num">4</td><td class="num">1</td><td class="num">1</td><td class="num">1</td></tr></tbody></table>
-</div>
+    <aside>
+      <section class="panel" aria-label="Namespaces">
+        <h2>Jobs by namespace</h2>
+        <div id="namespaceBars"></div>
+      </section>
 
-<div class="panel">
-<h2>CronJobs</h2>
-<table><thead><tr><th>CronJob</th><th>Schedule</th><th>State</th><th>Last schedule</th><th>Active jobs</th></tr></thead>
-<tbody><tr><td><code>default/backup</code></td><td><code>*/30 * * * *</code></td><td><span class="badge muted">suspended</span></td><td>2026-11-03 18:30</td><td class="num">0</td></tr><tr><td><code>ml-jobs/nightly-eval</code></td><td><code>0 2 * * *</code></td><td><span class="badge ok">active</span></td><td>2026-11-05 02:00</td><td class="num">1</td></tr></tbody></table>
-</div>
+      <section class="panel" aria-label="CronJobs">
+        <h2>CronJobs</h2>
+        <div id="cronjobs"></div>
+      </section>
+    </aside>
+  </div>
 
-<footer>Generated by k8s-batch-analyzer v1.0.0. Resource numbers come from the Job pod template, not from pod usage. Durations end at the completion time, or at report time for unfinished jobs.</footer>
+  <div class="foot">
+    <span>Sample data: <code>examples/capture.json</code> · Generated 2026-11-04 18:45 UTC</span>
+    <span><a href="https://github.com/Ankitavasudev/k8s-batch-analyzer">source →</a></span>
+  </div>
 </main>
+
+<script>
+const jobs = [
+  { ns: 'data', name: 'import-catalog', status: 'pending', gpu: 0, cpu: 1, mem: '2.0Gi', duration: '—' },
+  { ns: 'default', name: 'nightly-backup', status: 'succeeded', gpu: 0, cpu: 0.25, mem: '256Mi', duration: '4m 30s' },
+  { ns: 'ml-jobs', name: 'eval-bert', status: 'failed', gpu: 1, cpu: 2, mem: '8.0Gi', duration: '5m 0s' },
+  { ns: 'ml-jobs', name: 'gpu-batch', status: 'suspended', gpu: 2, cpu: 8, mem: '32.0Gi', duration: '—' },
+  { ns: 'ml-jobs', name: 'preprocess', status: 'running', gpu: 0, cpu: 0.5, mem: '1.0Gi', duration: '6h 45m' },
+  { ns: 'ml-jobs', name: 'train-resnet', status: 'succeeded', gpu: 1, cpu: 4, mem: '16.0Gi', duration: '1h 12m' },
+];
+
+const cronjobs = [
+  { ns: 'default', name: 'backup', schedule: '*/30 * * * *', suspended: true, last: '2026-11-03 18:30', active: 0 },
+  { ns: 'ml-jobs', name: 'nightly-eval', schedule: '0 2 * * *', suspended: false, last: '2026-11-05 02:00', active: 1 },
+];
+
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+const statusRank = { running: 0, pending: 1, failed: 2, suspended: 3, succeeded: 4 };
+
+const filterBar = document.getElementById('filterBar');
+const tbody = document.getElementById('jobRows');
+let active = 'all';
+
+function renderJobs() {
+  tbody.replaceChildren();
+  const list = jobs
+    .filter(j => active === 'all' || j.status === active)
+    .sort((a, b) => (statusRank[a.status] - statusRank[b.status]) || a.duration.localeCompare(b.duration));
+  if (!list.length) {
+    const tr = el('tr');
+    const td = el('td', 'muted', 'No jobs match this filter.');
+    td.colSpan = 5; tr.append(td); tbody.append(tr); return;
+  }
+  for (const j of list) {
+    const tr = el('tr');
+    tr.innerHTML = `<td><code>${j.ns}/${j.name}</code></td>
+      <td><span class="badge ${j.status}">${j.status}</span></td>
+      <td>${j.gpu ? `<strong>${j.gpu}</strong>` : '<span class="muted">—</span>'}</td>
+      <td><code>${j.cpu} CPU · ${j.mem}</code></td>
+      <td class="time">${j.duration}</td>`;
+    tbody.append(tr);
+  }
+}
+filterBar.addEventListener('click', e => {
+  const btn = e.target.closest('.chip'); if (!btn) return;
+  active = btn.dataset.filter;
+  filterBar.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c === btn));
+  renderJobs();
+});
+
+// namespace bars — total pods allocated by namespace
+const nsTotals = {};
+for (const j of jobs) nsTotals[j.ns] = (nsTotals[j.ns] || 0) + 1;
+const maxNs = Math.max(...Object.values(nsTotals));
+const nsBars = document.getElementById('namespaceBars');
+for (const [ns, n] of Object.entries(nsTotals)) {
+  const row = el('div', 'bar');
+  row.append(el('span', null, ns));
+  const track = el('div', 'track'); const fill = el('div', 'fill');
+  fill.style.width = (n / maxNs) * 100 + '%'; fill.style.background = 'var(--accent)';
+  track.append(fill); row.append(track);
+  row.append(el('span', 'nsl', `${n} job${n > 1 ? 's' : ''}`));
+  nsBars.append(row);
+}
+
+const cronjobsEl = document.getElementById('cronjobs');
+for (const cj of cronjobs) {
+  const card = el('div', 'cron');
+  const left = el('div');
+  left.append(el('div', null, `${cj.ns}/${cj.name}`));
+  const schedule = el('code', null, cj.schedule);
+  left.append(schedule);
+  card.append(left);
+  const right = el('div');
+  right.style.textAlign = 'right';
+  right.append(el('div', null, cj.suspended ? 'suspended' : `active: ${cj.active}`));
+  right.append(el('div', 'time', `last ${cj.last}`));
+  card.append(right);
+  cronjobsEl.append(card);
+}
+
+renderJobs();
+</script>
 </body>
 </html>
