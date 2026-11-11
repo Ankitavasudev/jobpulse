@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "v1.0.1"
+var version = "v1.1.0"
 
 func versionString() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
@@ -33,7 +33,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "k8s-batch-analyzer",
+	Use:   "jobpulse",
 	Short: "Summarise Kubernetes Jobs and CronJobs",
 	Long: "Read Kubernetes Jobs and CronJobs and report completion, failures,\n" +
 		"durations and requested resources.\n\n" +

@@ -31,22 +31,22 @@ jobs:
         run: go test -race ./...
 
       - name: Build
-        run: go build -o k8s-batch-analyzer .
+        run: go build -o jobpulse .
 
       - name: Analyze the bundled capture
         run: |
-          ./k8s-batch-analyzer --from examples/capture.json
-          ./k8s-batch-analyzer --from examples/capture.json -o json > out.json
+          ./jobpulse --from examples/capture.json
+          ./jobpulse --from examples/capture.json -o json > out.json
           grep -q '"jobs": 6' out.json
           grep -q '"succeeded": 2' out.json
           grep -q '"failed": 1' out.json
-          ./k8s-batch-analyzer --from examples/capture.json -o csv > out.csv
+          ./jobpulse --from examples/capture.json -o csv > out.csv
           grep -q 'ml-jobs,train-resnet,Succeeded,1,0,0,3' out.csv
-          ./k8s-batch-analyzer --from examples/capture.json --namespace ml-jobs | grep -q '4 jobs'
+          ./jobpulse --from examples/capture.json --namespace ml-jobs | grep -q '4 jobs'
 
       - name: Check the HTML report
         run: |
-          ./k8s-batch-analyzer --from examples/capture.json -o html > report.html
+          ./jobpulse --from examples/capture.json -o html > report.html
           grep -q '<!DOCTYPE html>' report.html
           grep -q 'Batch jobs' report.html
           grep -q 'train-resnet' report.html
@@ -55,4 +55,4 @@ jobs:
           ! grep -qE '(<link|<img|src="http)' report.html
 
       - name: Version
-        run: ./k8s-batch-analyzer version
+        run: ./jobpulse version

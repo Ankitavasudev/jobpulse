@@ -1,11 +1,11 @@
-# k8s-batch-analyzer
+# jobpulse
 
 Summarise Kubernetes Jobs and CronJobs: what succeeded, what failed, how long it
 took, and what resources each Job's pod template asks for. Reads a saved
 capture, raw `kubectl` output, or the current cluster.
 
 ```console
-$ k8s-batch-analyzer --from examples/capture.json
+$ jobpulse --from examples/capture.json
 Batch jobs — examples/capture.json
 Generated 2026-11-05 00:12 IST
 
@@ -46,34 +46,34 @@ time. That means a running Job shows its age so far.
 ## Install
 
 ```bash
-go install github.com/Ankitavasudev/k8s-batch-analyzer@latest
+go install github.com/Ankitavasudev/jobpulse@latest
 ```
 
 Requires Go 1.21 or newer. Or grab a prebuilt binary — every tag ships Linux,
-macOS and Windows builds (amd64 + arm64) on the [releases page](https://github.com/Ankitavasudev/k8s-batch-analyzer/releases),
+macOS and Windows builds (amd64 + arm64) on the [releases page](https://github.com/Ankitavasudev/jobpulse/releases),
 built with [GoReleaser](https://goreleaser.com).
 
 ## Usage
 
 ```bash
 # A saved capture with jobs and cronjobs arrays
-k8s-batch-analyzer --from examples/capture.json
+jobpulse --from examples/capture.json
 
 # Raw kubectl output
 kubectl get jobs -A -o json > jobs.json
 kubectl get cronjobs -A -o json > cronjobs.json
-k8s-batch-analyzer --jobs jobs.json --cronjobs cronjobs.json
+jobpulse --jobs jobs.json --cronjobs cronjobs.json
 
 # The current kubectl context
-k8s-batch-analyzer
+jobpulse
 
 # One namespace
-k8s-batch-analyzer --namespace ml-jobs
+jobpulse --namespace ml-jobs
 
 # Other formats
-k8s-batch-analyzer --from examples/capture.json -o json
-k8s-batch-analyzer --from examples/capture.json -o csv
-k8s-batch-analyzer --from examples/capture.json -o html > batch-report.html
+jobpulse --from examples/capture.json -o json
+jobpulse --from examples/capture.json -o csv
+jobpulse --from examples/capture.json -o html > batch-report.html
 ```
 
 ## Capture format
@@ -127,7 +127,7 @@ produces the same ordering.
 ## Demo
 
 A generated report for the example capture is published at
-<https://ankitavasudev.github.io/k8s-batch-analyzer/>.
+<https://ankitavasudev.github.io/jobpulse/>.
 
 ## Limitations
 

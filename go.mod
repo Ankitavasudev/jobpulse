@@ -1,4 +1,4 @@
-module github.com/Ankitavasudev/k8s-batch-analyzer
+module github.com/Ankitavasudev/jobpulse
 
 go 1.21
 
